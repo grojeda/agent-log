@@ -1,0 +1,27 @@
+{
+  "name": "agent-log",
+  "version": "0.1.0",
+  "description": "Export coding agent sessions to Markdown for Obsidian.",
+  "type": "module",
+  "bin": {
+    "agent-log": "./dist/cli.js"
+  },
+  "scripts": {
+    "dev": "tsx src/cli.ts",
+    "build": "tsc",
+    "start": "node dist/cli.js"
+  },
+  "dependencies": {
+    "commander": "^14.0.2",
+    "dotenv": "^17.2.3",
+    "execa": "^9.6.0",
+    "fs-extra": "^11.3.2",
+    "openai": "^6.9.1"
+  },
+  "devDependencies": {
+    "@types/fs-extra": "^11.0.4",
+    "@types/node": "^24.10.1",
+    "tsx": "^4.20.6",
+    "typescript": "^5.9.3"
+  }
+}
