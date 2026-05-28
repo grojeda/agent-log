@@ -11,23 +11,26 @@ import { FileSessionWriter } from "./writers/FileSessionWriter.js";
 
 const program = new Command();
 
+interface ExportOptions {
+  out?: string;
+  title?: string;
+}
+
 program
   .name("agent-log")
   .description("Export coding agent sessions to Markdown for Obsidian.")
-  .version("0.1.0");
-
-program
-  .command("export")
-  .description("Export a session from a supported provider.")
+  .version("0.1.0")
   .argument("<provider>", "Session provider: opencode or codex")
   .argument("<sessionId>", "Session ID to export")
-  .action(async (providerName: string, sessionId: string) => {
+  .option("--out <dir>", "Directory where the Markdown file will be written")
+  .option("--title <title>", "Optional title segment for the generated Markdown filename")
+  .action(async (providerName: string, sessionId: string, options: ExportOptions) => {
     try {
       const config = loadConfig();
       const registry = createProviderRegistry(config.openCodeSanitizeExport);
       const provider = registry.get(providerName);
       const summarizer = createSummarizer(config.openCodeGoApiKey);
-      const writer = new FileSessionWriter(config.outputDir);
+      const writer = new FileSessionWriter(options.out ?? config.outputDir);
 
       const rawSession = await provider.exportSession(sessionId);
       const parsedSession = await provider.parseSession(rawSession);
@@ -36,6 +39,7 @@ program
         provider: parsedSession.provider,
         sessionId: parsedSession.sessionId,
         createdAt: parsedSession.createdAt,
+        title: options.title,
       });
 
       console.log(`Session exported: ${outputPath}`);

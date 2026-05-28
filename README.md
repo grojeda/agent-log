@@ -11,7 +11,7 @@ The first version supports the `opencode` and `codex` providers, using a simple 
 The main command is:
 
 ```bash
-agent-log export <provider> <sessionId>
+agent-log <provider> <sessionId>
 ```
 
 During the export, the CLI:
@@ -21,7 +21,7 @@ During the export, the CLI:
 3. Exports the session through the provider.
 4. Converts the session into the shared `ParsedSession` model.
 5. Generates Markdown with `NoAiSummarizer` or `OpenCodeGoSummarizer`.
-6. Writes the `.md` file to `OUTPUT_DIR`.
+6. Writes the `.md` file to `OUTPUT_DIR` or the directory passed with `--out`.
 
 The CLI only orchestrates the flow. Agent-specific logic lives inside each provider.
 
@@ -64,13 +64,69 @@ pnpm build
 Export an OpenCode session:
 
 ```bash
-pnpm dev export opencode ses_1902cc385ffeTkGiLBQcr1ZCnr
+pnpm dev opencode ses_1902cc385ffeTkGiLBQcr1ZCnr
 ```
 
 Export a Codex session:
 
 ```bash
-pnpm dev export codex <sessionId>
+pnpm dev codex <sessionId>
+```
+
+Override the output directory for one export:
+
+```bash
+pnpm dev opencode <sessionId> --out "~/Obsidian/AI Sessions"
+```
+
+Add a custom title segment to the generated filename:
+
+```bash
+pnpm dev codex <sessionId> --title "Targets feature license"
+```
+
+## Local Testing Commands
+
+Check that the CLI boots and prints the available arguments and flags:
+
+```bash
+pnpm dev --help
+```
+
+Run a TypeScript build:
+
+```bash
+pnpm build
+```
+
+Test an OpenCode export using your default `OUTPUT_DIR`:
+
+```bash
+pnpm dev opencode <opencode-session-id>
+```
+
+Test a Codex export using your default `OUTPUT_DIR`:
+
+```bash
+pnpm dev codex <codex-session-id>
+```
+
+Test a one-off output directory:
+
+```bash
+pnpm dev opencode <opencode-session-id> --out "~/Obsidian/AI Sessions"
+```
+
+Test a custom filename title:
+
+```bash
+pnpm dev codex <codex-session-id> --title "Targets feature license"
+```
+
+Test both flags together:
+
+```bash
+pnpm dev opencode <opencode-session-id> --out "~/Obsidian/AI Sessions" --title "Prompt troubleshooting"
 ```
 
 OpenCode uses this internal command by default:
@@ -92,14 +148,20 @@ In this installation, OpenCode expects IDs in the `ses_...` format.
 After running `pnpm build`:
 
 ```bash
-pnpm start export opencode <sessionId>
+pnpm start opencode <sessionId>
 ```
 
 You can also link the binary locally if you want to use `agent-log` as a command:
 
 ```bash
 pnpm link --global
-agent-log export opencode <sessionId>
+agent-log opencode <sessionId>
+```
+
+With flags:
+
+```bash
+agent-log opencode <sessionId> --out "~/Obsidian/AI Sessions" --title "Prompt troubleshooting"
 ```
 
 ## Providers
@@ -137,7 +199,7 @@ When `OPENCODE_GO_API_KEY` is configured, the generated Markdown is an AI summar
 ## Scripts
 
 ```bash
-pnpm dev export <provider> <sessionId>
+pnpm dev <provider> <sessionId>
 pnpm build
-pnpm start export <provider> <sessionId>
+pnpm start <provider> <sessionId>
 ```
