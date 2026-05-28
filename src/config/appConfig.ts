@@ -1,4 +1,5 @@
 export const appConfig = {
   outputDirEnvName: "OUTPUT_DIR",
-  openAiApiKeyEnvName: "OPENAI_API_KEY",
+  openCodeGoApiKeyEnvName: "OPENCODE_GO_API_KEY",
+  openCodeSanitizeExportEnvName: "OPENCODE_SANITIZE_EXPORT",
 };

@@ -7,9 +7,16 @@ import type { SessionProvider } from "../SessionProvider.js";
 export class OpenCodeProvider implements SessionProvider {
   readonly name = "opencode";
 
+  constructor(private readonly sanitizeExport = false) {}
+
   async exportSession(sessionId: string): Promise<RawSession> {
     try {
-      const result = await execa("opencode", ["export", sessionId, "--sanitize"], {
+      const args = ["export", sessionId];
+      if (this.sanitizeExport) {
+        args.push("--sanitize");
+      }
+
+      const result = await execa("opencode", args, {
         reject: true,
       });
 

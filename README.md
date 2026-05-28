@@ -20,7 +20,7 @@ During the export, the CLI:
 2. Looks up the requested provider in `ProviderRegistry`.
 3. Exports the session through the provider.
 4. Converts the session into the shared `ParsedSession` model.
-5. Generates Markdown with `NoAiSummarizer` or `OpenAISummarizer`.
+5. Generates Markdown with `NoAiSummarizer` or `OpenCodeGoSummarizer`.
 6. Writes the `.md` file to `OUTPUT_DIR`.
 
 The CLI only orchestrates the flow. Agent-specific logic lives inside each provider.
@@ -31,12 +31,17 @@ Create a `.env` file at the project root:
 
 ```env
 OUTPUT_DIR=C:\Path\To\Your\Obsidian\Vault\Agent Summaries
-OPENAI_API_KEY=
+OPENCODE_GO_API_KEY=
+OPENCODE_SANITIZE_EXPORT=false
 ```
 
 `OUTPUT_DIR` is required and defines where Markdown summaries are saved.
 
-`OPENAI_API_KEY` is optional. If it is empty, the tool generates basic Markdown without AI. If it has a value, the tool uses `OpenAISummarizer` to try to generate a summary with OpenAI.
+Each environment variable must be on its own line. If `OPENCODE_GO_API_KEY` is accidentally appended to `OUTPUT_DIR`, the app will stop before writing any files.
+
+`OPENCODE_GO_API_KEY` is optional. If it is empty, the tool generates basic Markdown without AI. If it has a value, the tool uses `OpenCodeGoSummarizer` with OpenCode Go and the `opencode-go/qwen3.6-plus` model.
+
+`OPENCODE_SANITIZE_EXPORT` controls OpenCode transcript redaction. It defaults to `false` because this tool is intended for local personal use and summaries need the real transcript content. Set it to `true` if you want OpenCode exports to redact sensitive transcript and file data before summarization.
 
 The `.env` file is ignored by Git. Use `.env.example` as a reference.
 
@@ -68,7 +73,13 @@ Export a Codex session:
 pnpm dev export codex <sessionId>
 ```
 
-OpenCode uses this internal command:
+OpenCode uses this internal command by default:
+
+```bash
+opencode export <sessionId>
+```
+
+If `OPENCODE_SANITIZE_EXPORT=true`, it runs:
 
 ```bash
 opencode export <sessionId> --sanitize
@@ -120,6 +131,8 @@ The basic Markdown includes:
 - export date
 - parsed messages
 - commands, files, and errors when available
+
+When `OPENCODE_GO_API_KEY` is configured, the generated Markdown is an AI summary intended for Obsidian. It asks the model to include the goal, key decisions, commands, files touched, errors, and next steps when those details are present in the parsed session.
 
 ## Scripts
 

@@ -34,12 +34,17 @@ export class CodexProvider implements SessionProvider {
     const raw = rawSession.raw;
 
     if (Array.isArray(raw)) {
+      const metadata = extractSessionMetadata(raw);
+
       return {
         provider: rawSession.provider,
         sessionId: rawSession.sessionId,
-        messages: raw
-          .map((item) => normalizeMessage(item))
-          .filter((message): message is SessionMessage => Boolean(message)),
+        title: metadata.title,
+        createdAt: metadata.createdAt,
+        messages: raw.flatMap((item) => normalizeMessages(item)),
+        commands: extractCommands(raw),
+        files: extractFiles(raw),
+        errors: extractErrors(raw),
       };
     }
 
@@ -126,32 +131,142 @@ function parseJsonJsonlOrText(content: string): unknown {
 }
 
 function normalizeMessage(item: unknown): SessionMessage | undefined {
+  return normalizeMessages(item)[0];
+}
+
+function normalizeMessages(item: unknown): SessionMessage[] {
   if (typeof item === "string") {
-    return { role: "assistant", content: item };
+    return [{ role: "assistant", content: item }];
   }
 
   if (!isRecord(item)) {
-    return undefined;
+    return [];
+  }
+
+  if (item.type === "response_item" && isRecord(item.payload)) {
+    return normalizeResponseItem(item.payload, readString(item, ["timestamp"]));
+  }
+
+  if (item.type === "event_msg" && isRecord(item.payload)) {
+    return normalizeEventMessage(item.payload, readString(item, ["timestamp"]));
   }
 
   const content = readString(item, ["content", "message", "text", "body"]);
   if (!content) {
+    return [];
+  }
+
+  return [
+    {
+      role: normalizeRole(readString(item, ["role", "type", "author"])) ?? "assistant",
+      content,
+      createdAt: readString(item, ["createdAt", "created_at", "time", "timestamp"]),
+    },
+  ];
+}
+
+function normalizeResponseItem(payload: Record<string, unknown>, timestamp?: string): SessionMessage[] {
+  if (payload.type === "message") {
+    const role = normalizeRole(readString(payload, ["role"]));
+
+    if (!role) {
+      return [];
+    }
+
+    const content = readContent(payload.content);
+
+    return content
+      ? [
+          {
+            role,
+            content,
+            createdAt: timestamp,
+          },
+        ]
+      : [];
+  }
+
+  if (payload.type === "function_call" || payload.type === "custom_tool_call") {
+    const name = readString(payload, ["name", "call_id"]) ?? String(payload.type);
+    const argumentsText = readString(payload, ["arguments", "input"]);
+
+    return [
+      {
+        role: "tool",
+        content: argumentsText ? `${name}\n${argumentsText}` : name,
+        createdAt: timestamp,
+      },
+    ];
+  }
+
+  if (payload.type === "function_call_output" || payload.type === "custom_tool_call_output") {
+    const output = readString(payload, ["output"]);
+
+    return output
+      ? [
+          {
+            role: "tool",
+            content: output,
+            createdAt: timestamp,
+          },
+        ]
+      : [];
+  }
+
+  return [];
+}
+
+function normalizeEventMessage(payload: Record<string, unknown>, timestamp?: string): SessionMessage[] {
+  const userMessage = payload.user_message;
+  if (!isRecord(userMessage)) {
+    return [];
+  }
+
+  const textElements = userMessage.text_elements;
+  if (!Array.isArray(textElements)) {
+    return [];
+  }
+
+  const content = textElements
+    .filter((value): value is string => typeof value === "string" && value.trim().length > 0)
+    .join("\n\n");
+
+  return content ? [{ role: "user", content, createdAt: timestamp }] : [];
+}
+
+function readContent(value: unknown): string | undefined {
+  if (typeof value === "string") {
+    return value.trim() || undefined;
+  }
+
+  if (!Array.isArray(value)) {
     return undefined;
   }
 
-  return {
-    role: normalizeRole(readString(item, ["role", "type", "author"])),
-    content,
-    createdAt: readString(item, ["createdAt", "created_at", "time", "timestamp"]),
-  };
+  const content = value
+    .map((part) => {
+      if (typeof part === "string") {
+        return part;
+      }
+
+      if (!isRecord(part)) {
+        return undefined;
+      }
+
+      return readString(part, ["text", "content"]);
+    })
+    .filter((part): part is string => Boolean(part?.trim()))
+    .join("\n\n");
+
+  return content || undefined;
 }
 
-function normalizeRole(value: string | undefined): SessionMessage["role"] {
+function normalizeRole(value: string | undefined): SessionMessage["role"] | undefined {
   if (value === "user" || value === "assistant" || value === "system" || value === "tool") {
     return value;
   }
 
-  return "assistant";
+  return undefined;
 }
 
 function readString(source: Record<string, unknown>, keys: string[]): string | undefined {
@@ -179,4 +294,69 @@ function extractStringList(source: Record<string, unknown>, keys: string[]): str
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function extractSessionMetadata(items: unknown[]): { title?: string; createdAt?: string } {
+  for (const item of items) {
+    if (!isRecord(item) || item.type !== "session_meta" || !isRecord(item.payload)) {
+      continue;
+    }
+
+    return {
+      title: readString(item.payload, ["id"]),
+      createdAt: readString(item.payload, ["timestamp"]),
+    };
+  }
+
+  return {};
+}
+
+function extractCommands(items: unknown[]): string[] | undefined {
+  const commands = items
+    .flatMap((item) => {
+      if (!isRecord(item) || item.type !== "response_item" || !isRecord(item.payload)) {
+        return [];
+      }
+
+      const payload = item.payload;
+      if (payload.type !== "function_call" && payload.type !== "custom_tool_call") {
+        return [];
+      }
+
+      const name = readString(payload, ["name"]);
+      const argumentsText = readString(payload, ["arguments", "input"]);
+
+      if (!name && !argumentsText) {
+        return [];
+      }
+
+      return [argumentsText ? `${name ?? "tool"} ${argumentsText}` : name ?? "tool"];
+    })
+    .filter((command) => command.trim().length > 0);
+
+  return commands.length > 0 ? commands : undefined;
+}
+
+function extractFiles(items: unknown[]): string[] | undefined {
+  const filePattern =
+    /(?:[A-Za-z]:)?[\\/][\w .()[\]-]+(?:[\\/][\w .()[\]-]+)+\.[A-Za-z0-9]+|(?:apps|libs|src|test|tests)[\\/][\w .()[\]\/-]+\.[A-Za-z0-9]+/g;
+  const files = new Set<string>();
+
+  for (const message of items.flatMap((item) => normalizeMessages(item))) {
+    for (const match of message.content.matchAll(filePattern)) {
+      files.add(match[0]);
+    }
+  }
+
+  return files.size > 0 ? [...files] : undefined;
+}
+
+function extractErrors(items: unknown[]): string[] | undefined {
+  const errors = items
+    .flatMap((item) => normalizeMessages(item))
+    .filter((message) => /\b(error|failed|exception|fatal)\b/i.test(message.content))
+    .map((message) => message.content)
+    .slice(0, 20);
+
+  return errors.length > 0 ? errors : undefined;
 }

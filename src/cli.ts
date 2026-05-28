@@ -5,7 +5,7 @@ import { CodexProvider } from "./providers/codex/CodexProvider.js";
 import { OpenCodeProvider } from "./providers/opencode/OpenCodeProvider.js";
 import { ProviderRegistry } from "./providers/ProviderRegistry.js";
 import { NoAiSummarizer } from "./summarizers/NoAiSummarizer.js";
-import { OpenAISummarizer } from "./summarizers/OpenAISummarizer.js";
+import { OpenCodeGoSummarizer } from "./summarizers/OpenCodeGoSummarizer.js";
 import type { Summarizer } from "./summarizers/Summarizer.js";
 import { FileSessionWriter } from "./writers/FileSessionWriter.js";
 
@@ -24,9 +24,9 @@ program
   .action(async (providerName: string, sessionId: string) => {
     try {
       const config = loadConfig();
-      const registry = createProviderRegistry();
+      const registry = createProviderRegistry(config.openCodeSanitizeExport);
       const provider = registry.get(providerName);
-      const summarizer = createSummarizer(config.openAiApiKey);
+      const summarizer = createSummarizer(config.openCodeGoApiKey);
       const writer = new FileSessionWriter(config.outputDir);
 
       const rawSession = await provider.exportSession(sessionId);
@@ -48,18 +48,18 @@ program
 
 program.parseAsync();
 
-function createProviderRegistry(): ProviderRegistry {
+function createProviderRegistry(openCodeSanitizeExport: boolean): ProviderRegistry {
   const registry = new ProviderRegistry();
 
-  registry.register(new OpenCodeProvider());
+  registry.register(new OpenCodeProvider(openCodeSanitizeExport));
   registry.register(new CodexProvider());
 
   return registry;
 }
 
-function createSummarizer(openAiApiKey?: string): Summarizer {
-  if (openAiApiKey) {
-    return new OpenAISummarizer(openAiApiKey);
+function createSummarizer(openCodeGoApiKey?: string): Summarizer {
+  if (openCodeGoApiKey) {
+    return new OpenCodeGoSummarizer(openCodeGoApiKey);
   }
 
   return new NoAiSummarizer();
