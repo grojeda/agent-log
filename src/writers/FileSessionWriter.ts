@@ -3,12 +3,15 @@ import os from "node:os";
 import fs from "fs-extra";
 import { sanitizeFilename } from "../utils/sanitizeFilename.js";
 import type { MarkdownWriter, WriteMarkdownOptions } from "./MarkdownWriter.js";
+import { FRONTMATTER_PATH, loadFrontmatterBlock } from "../config/frontmatter.js";
 
 export class FileSessionWriter implements MarkdownWriter {
   private readonly outputDir: string;
+  private readonly frontmatterPath: string;
 
-  constructor(outputDir: string) {
+  constructor(outputDir: string, frontmatterPath = FRONTMATTER_PATH) {
     this.outputDir = expandHomeDir(outputDir);
+    this.frontmatterPath = frontmatterPath;
   }
 
   async write(markdown: string, options: WriteMarkdownOptions): Promise<string> {
@@ -19,8 +22,10 @@ export class FileSessionWriter implements MarkdownWriter {
     const titleSegment = options.title ? ` - ${options.title}` : "";
     const filename = sanitizeFilename(`${date} - ${options.provider} - ${shortSessionId}${titleSegment}.md`);
     const outputPath = path.join(this.outputDir, filename);
+    const frontmatterBlock = await loadFrontmatterBlock(options, this.frontmatterPath);
+    const outputMarkdown = frontmatterBlock ? `${frontmatterBlock}${markdown}` : markdown;
 
-    await fs.writeFile(outputPath, markdown, "utf8");
+    await fs.writeFile(outputPath, outputMarkdown, "utf8");
 
     return outputPath;
   }

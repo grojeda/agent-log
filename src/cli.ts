@@ -7,6 +7,7 @@ import { ProviderRegistry } from "./providers/ProviderRegistry.js";
 import { NoAiSummarizer } from "./summarizers/NoAiSummarizer.js";
 import { OpenCodeGoSummarizer } from "./summarizers/OpenCodeGoSummarizer.js";
 import type { Summarizer } from "./summarizers/Summarizer.js";
+import { loadTemplate } from "./config/loadTemplate.js";
 import { FileSessionWriter } from "./writers/FileSessionWriter.js";
 
 const program = new Command();
@@ -14,6 +15,7 @@ const program = new Command();
 interface ExportOptions {
   out?: string;
   title?: string;
+  template?: string;
 }
 
 program
@@ -24,12 +26,14 @@ program
   .argument("<sessionId>", "Session ID to export")
   .option("--out <dir>", "Directory where the Markdown file will be written")
   .option("--title <title>", "Optional title segment for the generated Markdown filename")
+  .option("--template <name>", "Optional template name from TEMPLATE_DIR without the .txt extension")
   .action(async (providerName: string, sessionId: string, options: ExportOptions) => {
     try {
       const config = loadConfig();
       const registry = createProviderRegistry(config.openCodeSanitizeExport);
       const provider = registry.get(providerName);
-      const summarizer = createSummarizer(config.openCodeGoApiKey);
+      const templateInstructions = await loadTemplate(options.template, config.templateDir);
+      const summarizer = createSummarizer(config.openCodeGoApiKey, templateInstructions);
       const writer = new FileSessionWriter(options.out ?? config.outputDir);
 
       const rawSession = await provider.exportSession(sessionId);
@@ -61,9 +65,9 @@ function createProviderRegistry(openCodeSanitizeExport: boolean): ProviderRegist
   return registry;
 }
 
-function createSummarizer(openCodeGoApiKey?: string): Summarizer {
+function createSummarizer(openCodeGoApiKey?: string, templateInstructions?: string): Summarizer {
   if (openCodeGoApiKey) {
-    return new OpenCodeGoSummarizer(openCodeGoApiKey);
+    return new OpenCodeGoSummarizer(openCodeGoApiKey, templateInstructions);
   }
 
   return new NoAiSummarizer();

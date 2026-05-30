@@ -10,14 +10,30 @@ const SUMMARY_PROMPT = [
   "Summarize this technical coding-agent session in Markdown for storage in Obsidian.",
   "Include these sections when the information is available: Goal, Key decisions, Commands, Files touched, Errors, and Next steps.",
   "Do not invent information. If a section has no supporting data, omit it.",
+  "Responde únicamente en español.",
   "Return only Markdown.",
 ].join(" ");
+
+const TEMPLATE_DELIMITER = "Instrucciones de formato adicional:";
+
+export function buildSummaryPrompt(templateInstructions?: string): string {
+  const normalizedTemplate = templateInstructions?.trim();
+
+  if (!normalizedTemplate) {
+    return SUMMARY_PROMPT;
+  }
+
+  return [SUMMARY_PROMPT, "", TEMPLATE_DELIMITER, normalizedTemplate].join("\n");
+}
 
 export class OpenCodeGoSummarizer implements Summarizer {
   private readonly fallback = new NoAiSummarizer();
   private readonly client?: OpenAI;
+  private readonly templateInstructions?: string;
 
-  constructor(apiKey?: string) {
+  constructor(apiKey?: string, templateInstructions?: string) {
+    this.templateInstructions = templateInstructions?.trim() || undefined;
+
     if (apiKey) {
       this.client = new OpenAI({
         apiKey,
@@ -37,7 +53,7 @@ export class OpenCodeGoSummarizer implements Summarizer {
         messages: [
           {
             role: "system",
-            content: SUMMARY_PROMPT,
+            content: buildSummaryPrompt(this.templateInstructions),
           },
           {
             role: "user",

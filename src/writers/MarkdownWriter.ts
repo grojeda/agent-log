@@ -7,4 +7,5 @@ export interface WriteMarkdownOptions {
   sessionId: string;
   createdAt?: string;
   title?: string;
+  description?: string;
 }

@@ -1,0 +1,5 @@
+provider: "{{provider}}"
+session_id: "{{sessionId}}"
+created_at: "{{createdAt}}"
+title: "{{title}}"
+description: "{{description}}"

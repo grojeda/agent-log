@@ -5,12 +5,14 @@ export interface LoadedConfig {
   outputDir: string;
   openCodeGoApiKey?: string;
   openCodeSanitizeExport: boolean;
+  templateDir?: string;
 }
 
 export function loadConfig(): LoadedConfig {
   const outputDir = process.env[appConfig.outputDirEnvName]?.trim();
   const openCodeGoApiKey = process.env[appConfig.openCodeGoApiKeyEnvName]?.trim();
   const openCodeSanitizeExport = parseBooleanEnv(process.env[appConfig.openCodeSanitizeExportEnvName]);
+  const templateDir = process.env[appConfig.templateDirEnvName]?.trim();
 
   if (!outputDir) {
     throw new Error(
@@ -24,6 +26,7 @@ export function loadConfig(): LoadedConfig {
     outputDir,
     openCodeGoApiKey: openCodeGoApiKey || undefined,
     openCodeSanitizeExport,
+    templateDir: templateDir || undefined,
   };
 }
 
