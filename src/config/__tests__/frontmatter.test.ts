@@ -8,7 +8,6 @@ import { loadFrontmatterBlock, renderFrontmatterBlock } from "../frontmatter.js"
 const options: WriteMarkdownOptions = {
   provider: "opencode",
   sessionId: "session-12345678",
-  createdAt: "2026-05-30T12:00:00.000Z",
   title: "Feature summary",
   description: "A summary of the new feature.",
 };
@@ -28,7 +27,6 @@ describe("frontmatter", () => {
     const template = [
       'provider: "{{provider}}"',
       'session_id: "{{sessionId}}"',
-      'created_at: "{{createdAt}}"',
       'title: "{{title}}"',
       'description: "{{description}}"',
     ].join("\n");
@@ -38,7 +36,6 @@ describe("frontmatter", () => {
         "---",
         'provider: "opencode"',
         'session_id: "session-12345678"',
-        'created_at: "2026-05-30T12:00:00.000Z"',
         'title: "Feature summary"',
         'description: "A summary of the new feature."',
         "---",
@@ -48,12 +45,12 @@ describe("frontmatter", () => {
   });
 
   it("uses empty strings for optional missing placeholders", () => {
-    const block = renderFrontmatterBlock('title: "{{title}}"\ncreated_at: "{{createdAt}}"', {
+    const block = renderFrontmatterBlock('title: "{{title}}"\ndescription: "{{description}}"', {
       provider: "codex",
       sessionId: "session-1",
     });
 
-    expect(block).toBe('---\ntitle: ""\ncreated_at: ""\n---\n');
+    expect(block).toBe('---\ntitle: ""\ndescription: ""\n---\n');
   });
 
   it("skips empty frontmatter", () => {

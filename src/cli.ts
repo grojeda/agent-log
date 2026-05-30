@@ -8,6 +8,7 @@ import { NoAiSummarizer } from "./summarizers/NoAiSummarizer.js";
 import { OpenCodeGoSummarizer } from "./summarizers/OpenCodeGoSummarizer.js";
 import type { Summarizer } from "./summarizers/Summarizer.js";
 import { loadTemplate } from "./config/loadTemplate.js";
+import { extractDescriptionFromSummary, extractTitleFromSummary } from "./config/extractDescription.js";
 import { FileSessionWriter } from "./writers/FileSessionWriter.js";
 
 const program = new Command();
@@ -39,11 +40,14 @@ program
       const rawSession = await provider.exportSession(sessionId);
       const parsedSession = await provider.parseSession(rawSession);
       const markdown = await summarizer.summarize(parsedSession);
+      const description = extractDescriptionFromSummary(markdown, parsedSession);
+      const title = options.title?.trim() || extractTitleFromSummary(markdown, parsedSession);
       const outputPath = await writer.write(markdown, {
         provider: parsedSession.provider,
         sessionId: parsedSession.sessionId,
         createdAt: parsedSession.createdAt,
-        title: options.title,
+        title,
+        description,
       });
 
       console.log(`Session exported: ${outputPath}`);

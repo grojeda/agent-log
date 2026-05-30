@@ -7,11 +7,13 @@ const OPENCODE_GO_BASE_URL = "https://opencode.ai/zen/go/v1";
 const OPENCODE_GO_CONFIG_MODEL = "opencode-go/qwen3.6-plus";
 const OPENCODE_GO_API_MODEL = "qwen3.6-plus";
 const SUMMARY_PROMPT = [
-  "Summarize this technical coding-agent session in Markdown for storage in Obsidian.",
-  "Include these sections when the information is available: Goal, Key decisions, Commands, Files touched, Errors, and Next steps.",
+  "Summarize this technical coding-agent session in Markdown for Obsidian storage.",
+  "Write the entire summary content in Spanish. Return only Markdown.",
+  "Prioritize user messages (`role: user`) as the most important content to identify the goal, requests, and relevant decisions.",
+  "Include a `## Objetivo` section; within it, add a `### Mensaje inicial` subsection with the user's first message. If the initial message exceeds 200 words, summarize its content without losing key requirements. If there are no user messages, omit this subsection.",
+  "Include these sections when supporting information exists: `## Objetivo`, `## Decisiones clave`, `## Comandos`, `## Archivos modificados`, `## Errores`, `## Próximos pasos`, and `## Resumen general`.",
+  "Place the `## Resumen general` section at the end and write exactly 1 concise sentence there (max 25 words) that synthesizes what was accomplished or the final state of the session. Do not use ellipses or visibly truncated text.",
   "Do not invent information. If a section has no supporting data, omit it.",
-  "Responde únicamente en español.",
-  "Return only Markdown.",
 ].join(" ");
 
 const TEMPLATE_DELIMITER = "Instrucciones de formato adicional:";
